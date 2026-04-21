@@ -1,0 +1,84 @@
+# GitHub 自动打包 APK - 免安装 Android Studio
+# 仓库: https://github.com/YYmm1314/family-budget-app
+
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Add Android platform
+        run: npx cap add android
+
+      - name: Copy AndroidManifest with voice permission
+        run: mkdir -p android/app/src/main && cat > android/app/src/main/AndroidManifest.xml << 'MANIFEST'
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.family.budgetapp">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="true">
+        <activity
+            android:configChanges="orientation|keyboard|keyboardHidden|screenSize|locale|layoutDirection"
+            android:label="@string/app_name"
+            android:name=".MainActivity"
+            android:theme="@style/AppTheme.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+MANIFEST
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Build Debug APK
+        uses: android-actions/build-apk@v3
+        with:
+          project-path: android
+          output-path: app-release.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: family-budget-app
+          path: app-release.apk
+
+      - name: Generate download link
+        run: |
+          echo "✅ APK 构建完成！"
+          echo "📱 下载链接将在 Artifacts 区域提供"
+          echo ""
+          echo "请在仓库页面 → Actions → 点击最新构建 → Artifacts 下载 APK"
