@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>家账本 · 家庭共享版</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --primary: #4CAF87;
+    --primary-dark: #3a9a72;
+    --primary-light: #E8F8F0;
+    --income: #4CAF87;
+    --expense: #FF6B6B;
+    --saving: #5B9BD5;
+    --bg: #F5F7FA;
+    --card: #FFFFFF;
+    --text: #2D3436;
+    --text-sub: #636E72;
+    --border: #E8ECF0;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: #C9D6E3;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; padding: 20px;
+  }
+  /* ===== Phone Shell ===== */
+  .phone-wrap {
+    width: 375px; height: 812px;
+    background: var(--bg);
+    border-radius: 44px;
+    box-shadow: 0 24px 72px rgba(0,0,0,0.28);
+    overflow: hidden; position: relative;
+    display: flex; flex-direction: column;
+  }
+  .status-bar {
+    background: var(--primary);
+    padding: 12px 24px 8px;
+    display: flex; justify-content: space-between; align-items: center;
+    color: white; font-size: 12px; font-weight: 600; flex-shrink: 0;
+  }
+  /* ===== Pages ===== */
+  .page { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  .page.active { display: flex; }
+  .content { flex:1; overflow-y:auto; padding-bottom: 82px; }
+  .content::-webkit-scrollbar { width:0; }
+  /* ===== Header ===== */
+  .page-header {
+    background: var(--primary);
+    padding: 16px 20px 20px;
+    color: white; flex-shrink: 0;
+  }
+  .page-header h2 { font-size:20px; font-weight:700; }
+  .page-header .sub { font-size:12px; opacity:.8; margin-top:3px; }
+  /* ===== Month Nav ===== */
+  .month-nav {
+    display:flex; align-items:center; justify-content:center; gap:20px;
+    padding: 0 20px 18px; background: var(--primary); color:white;
+  }
+  .m-arrow {
+    width:28px; height:28px; border:1.5px solid rgba(255,255,255,.6);
+    border-radius:50%; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; font-size:16px; transition:background .2s;
+  }
+  .m-arrow:hover { background:rgba(255,255,255,.2); }
+  .m-current { font-size:17px; font-weight:700; min-width:120px; text-align:center; }
+  /* ===== Summary Cards ===== */
+  .summary-row {
+    display:flex; gap:10px;
+    padding: 0 14px; margin-top:-18px; margin-bottom:14px;
+  }
+  .sum-card {
+    flex:1; background:white; border-radius:16px;
+    padding:13px 10px; box-shadow:var(--shadow); text-align:center;
+  }
+  .sum-card .lbl { font-size:10px; color:var(--text-sub); margin-bottom:5px; }
+  .sum-card .val { font-size:16px; font-weight:800; }
+  .sum-card.income .val { color:var(--income); }
+  .sum-card.expense .val { color:var(--expense); }
+  .sum-card.balance .val { color:var(--saving); }
+  /* ===== Family Strip ===== */
+  .family-strip {
+    padding: 0 14px 10px;
+    display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+  }
+  .member-chip {
+    display:flex; align-items:center; gap:5px;
+    padding: 5px 10px; border-radius:20px;
+    font-size:12px; cursor:pointer; transition:all .2s;
+    border: 1.5px solid var(--border);
+    background: white; color:var(--text-sub);
+    user-select: none;
+  }
+  .member-chip.active { background:var(--primary); color:white; border-color:var(--primary); }
+  .member-chip .avatar { font-size:16px; }
+  /* ===== Filter Tabs ===== */
+  .filter-tabs {
+    display:flex; gap:8px; padding:0 14px 10px;
+  }
+  .f-tab {
+    padding:5px 12px; border-radius:16px; font-size:12px;
+    cursor:pointer; border:1.5px solid var(--border);
+    color:var(--text-sub); background:white; transition:all .2s;
+  }
+  .f-tab.active { background:var(--primary); color:white; border-color:var(--primary); }
+  /* ===== Transaction List ===== */
+  .tx-group { padding:0 14px; margin-bottom:6px; }
+  .tx-date-header {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:7px 4px; font-size:12px; color:var(--text-sub);
+  }
+  .tx-date-header .day { font-weight:700; color:var(--text); font-size:13px; }
+  .tx-item {
+    background:white; border-radius:14px; padding:12px 14px;
+    display:flex; align-items:center; gap:10px; margin-bottom:8px;
+    box-shadow:0 1px 6px rgba(0,0,0,.05); cursor:pointer; transition:transform .15s;
+    position:relative;
+  }
+  .tx-item:active { transform:scale(0.98); }
+  .tx-icon {
+    width:42px; height:42px; border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:21px; flex-shrink:0;
+  }
+  .tx-info { flex:1; }
+  .tx-info .name { font-size:14px; font-weight:600; color:var(--text); }
+  .tx-info .sub { font-size:11px; color:var(--text-sub); margin-top:2px; display:flex; align-items:center; gap:4px; }
+  .tx-member-badge {
+    display:inline-flex; align-items:center; gap:2px;
+    background:#F5F7FA; border-radius:10px; padding:1px 6px;
+    font-size:10px; color:var(--text-sub);
+  }
+  .tx-amount { font-size:16px; font-weight:700; }
+  .tx-amount.income { color:var(--income); }
+  .tx-amount.expense { color:var(--expense); }
+  /* ===== Bottom Nav ===== */
+  .bottom-nav {
+    position:absolute; bottom:0; left:0; right:0;
+    height:78px; background:white;
+    border-top:1px solid var(--border);
+    display:flex; padding-bottom:10px; z-index:10;
+  }
+  .nav-item {
+    flex:1; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:3px; cursor:pointer;
+    transition:all .2s; color:var(--text-sub); font-size:10px;
+  }
+  .nav-item .icon { font-size:22px; }
+  .nav-item.active { color:var(--primary); }
+  .add-circle {
+    width:54px; height:54px; background:var(--primary); border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px; color:white; margin-top:-26px;
+    box-shadow:0 4px 16px rgba(76,175,135,.5);
+    cursor:pointer; transition:transform .2s;
+  }
+  .add-circle:active { transform:scale(0.92); }
+  /* ===== ADD PAGE ===== */
+  .add-header {
+    background:var(--primary); padding:16px 20px 24px;
+    color:white; flex-shrink:0;
+  }
+  .back-btn { font-size:20px; cursor:pointer; margin-bottom:8px; display:inline-block; }
+  .type-toggle {
+    display:flex; background:rgba(255,255,255,.2);
+    border-radius:25px; padding:4px;
+  }
+  .type-btn {
+    flex:1; padding:9px; text-align:center;
+    border-radius:22px; font-size:14px; font-weight:600;
+    cursor:pointer; transition:all .25s; color:rgba(255,255,255,.75);
+  }
+  .type-btn.active { background:white; color:var(--primary); }
+  .amount-display {
+    background:white; margin:-14px 14px 0;
+    border-radius:18px; padding:18px 20px;
+    box-shadow:var(--shadow); display:flex; align-items:baseline; gap:6px;
+  }
+  .amount-display .symbol { font-size:26px; color:var(--text-sub); }
+  .amount-display .value {
+    font-size:38px; font-weight:800; color:var(--text);
+    flex:1; border:none; outline:none; background:transparent; font-family:inherit;
+  }
+  /* Voice Button */
+  .voice-btn {
+    width:44px; height:44px; border-radius:50%;
+    background:var(--primary-light); border:2px solid var(--primary);
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; cursor:pointer; transition:all .2s; flex-shrink:0;
+  }
+  .voice-btn.listening {
+    background:var(--expense); border-color:var(--expense);
+    animation:pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0%,100%{ box-shadow:0 0 0 0 rgba(255,107,107,.4); }
+    50%{ box-shadow:0 0 0 10px rgba(255,107,107,0); }
+  }
+  /* Voice Result Box */
+  .voice-result {
+    margin:10px 14px 0;
+    background:#FFF9C4;
+    border-radius:12px; padding:10px 14px;
+    font-size:13px; color:#666;
+    border-left:3px solid #FFD600;
+    display:none;
+  }
+  .voice-result.show { display:block; }
+  .voice-result .vr-text { font-weight:600; color:var(--text); margin-bottom:4px; }
+  .voice-result .vr-parsed { color:var(--primary); font-size:12px; }
+  /* Section Title */
+  .section-title { padding:14px 18px 8px; font-size:13px; font-weight:700; color:var(--text-sub); }
+  /* Cat Grid */
+  .cat-grid {
+    display:grid; grid-template-columns:repeat(5,1fr);
+    gap:10px; padding:0 14px 6px;
+  }
+  .cat-cell {
+    display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer;
+  }
+  .cat-icon {
+    width:48px; height:48px; border-radius:13px;
+    background:#F5F7FA; display:flex; align-items:center; justify-content:center;
+    font-size:22px; border:2px solid transparent; transition:all .2s;
+  }
+  .cat-cell.selected .cat-icon { border-color:var(--primary); background:var(--primary-light); }
+  .cat-cell .cat-name { font-size:10px; color:var(--text-sub); }
+  /* Member Picker */
+  .member-picker {
+    display:flex; gap:8px; padding:0 14px 6px; flex-wrap:wrap;
+  }
+  .mpick {
+    display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;
+  }
+  .mpick-avatar {
+    width:44px; height:44px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; border:2px solid var(--border);
+    background:#F5F7FA; transition:all .2s;
+  }
+  .mpick.selected .mpick-avatar { border-color:var(--primary); background:var(--primary-light); }
+  .mpick-name { font-size:10px; color:var(--text-sub); }
+  /* Note Input */
+  .note-input {
+    margin:0 14px; background:white; border-radius:13px;
+    padding:11px 14px; display:flex; align-items:center; gap:8px;
+    box-shadow:0 1px 6px rgba(0,0,0,.05);
+  }
+  .note-input input, .note-input select {
+    border:none; outline:none; flex:1; font-size:13px; font-family:inherit; color:var(--text); background:transparent;
+  }
+  /* Keypad */
+  .keypad {
+    padding:10px 14px 14px; background:white;
+    border-top:1px solid var(--border); flex-shrink:0;
+  }
+  .keypad-row { display:flex; gap:8px; margin-bottom:8px; }
+  .key {
+    flex:1; height:50px; background:#F5F7FA;
+    border-radius:12px; display:flex; align-items:center; justify-content:center;
+    font-size:19px; font-weight:600; cursor:pointer; transition:background .15s; user-select:none;
+  }
+  .key:active { background:#DDE3EA; }
+  .key.zero { flex:2; }
+  .key.del { color:var(--expense); }
+  .key.confirm { background:var(--primary); color:white; font-size:15px; }
+  .key.confirm:active { background:var(--primary-dark); }
+  /* ===== STATS PAGE ===== */
+  .chart-card {
+    margin:0 14px 14px; background:white;
+    border-radius:16px; padding:16px; box-shadow:var(--shadow);
+  }
+  .chart-title { font-size:14px; font-weight:700; color:var(--text); margin-bottom:14px; }
+  .bar-chart { display:flex; align-items:flex-end; gap:6px; height:90px; }
+  .bar-group { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .bars { display:flex; gap:3px; align-items:flex-end; height:72px; }
+  .bar { width:10px; border-radius:4px 4px 0 0; }
+  .bar.in { background:var(--income); }
+  .bar.ex { background:var(--expense); }
+  .bar-label { font-size:10px; color:var(--text-sub); }
+  .donut-wrap { display:flex; align-items:center; gap:14px; }
+  .legend-list { flex:1; }
+  .legend-item { display:flex; align-items:center; gap:7px; margin-bottom:7px; font-size:12px; }
+  .legend-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .legend-name { flex:1; color:var(--text); }
+  .legend-pct { color:var(--text-sub); font-weight:600; }
+  /* Member Contribution */
+  .contrib-item {
+    display:flex; align-items:center; gap:10px;
+    padding:10px 0; border-bottom:1px solid var(--border);
+  }
+  .contrib-item:last-child { border-bottom:none; }
+  .contrib-avatar { font-size:22px; }
+  .contrib-info { flex:1; }
+  .contrib-name { font-size:13px; font-weight:600; }
+  .contrib-bar-bg { height:6px; background:#F0F0F0; border-radius:3px; margin-top:5px; }
+  .contrib-bar-fill { height:100%; border-radius:3px; background:var(--primary); }
+  .contrib-amount { font-size:13px; font-weight:700; color:var(--expense); }
+  /* ===== BUDGET PAGE ===== */
+  .budget-overview {
+    margin:-18px 14px 14px; background:white;
+    border-radius:16px; padding:18px; box-shadow:var(--shadow);
+  }
+  .budget-bar-bg { height:10px; background:#F0F0F0; border-radius:5px; overflow:hidden; margin-top:8px; }
+  .budget-bar-fill { height:100%; border-radius:5px; background:var(--primary); transition:width .5s; }
+  .budget-bar-fill.warn { background:#FFB347; }
+  .budget-bar-fill.over { background:var(--expense); }
+  .budget-list { padding:0 14px; }
+  .budget-item { background:white; border-radius:14px; padding:13px 14px; margin-bottom:9px; box-shadow:0 1px 6px rgba(0,0,0,.05); }
+  .budget-item-top { display:flex; align-items:center; gap:9px; margin-bottom:9px; }
+  .budget-item-icon { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; }
+  .budget-item-name { flex:1; font-size:14px; font-weight:600; }
+  .budget-item-amount { font-size:12px; color:var(--text-sub); }
+  /* ===== PROFILE PAGE ===== */
+  .profile-header {
+    background:var(--primary); padding:26px 20px 36px; color:white;
+  }
+  .profile-avatar { width:68px; height:68px; border-radius:50%; background:rgba(255,255,255,.25); display:flex; align-items:center; justify-content:center; font-size:34px; margin-bottom:10px; }
+  .profile-name { font-size:19px; font-weight:700; }
+  .profile-sub { font-size:12px; opacity:.8; margin-top:3px; }
+  .profile-stats { display:flex; background:white; margin:-18px 14px 14px; border-radius:16px; box-shadow:var(--shadow); overflow:hidden; }
+  .p-stat { flex:1; padding:14px; text-align:center; border-right:1px solid var(--border); }
+  .p-stat:last-child { border-right:none; }
+  .p-stat .n { font-size:19px; font-weight:800; color:var(--primary); }
+  .p-stat .l { font-size:10px; color:var(--text-sub); margin-top:3px; }
+  /* Family Members Card */
+  .family-card {
+    margin:0 14px 14px; background:white;
+    border-radius:16px; padding:16px; box-shadow:var(--shadow);
+  }
+  .family-card-title { font-size:14px; font-weight:700; color:var(--text); margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; }
+  .family-member-row {
+    display:flex; align-items:center; gap:12px; padding:10px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .family-member-row:last-child { border-bottom:none; }
+  .fm-avatar { font-size:28px; }
+  .fm-info { flex:1; }
+  .fm-name { font-size:14px; font-weight:600; }
+  .fm-role { font-size:11px; color:var(--text-sub); margin-top:2px; }
+  .fm-badge {
+    padding:3px 10px; border-radius:10px; font-size:11px; font-weight:600;
+  }
+  .fm-badge.admin { background:var(--primary-light); color:var(--primary); }
+  .fm-badge.member { background:#EEF2FF; color:#5B9BD5; }
+  .menu-group { padding:0 14px; margin-bottom:14px; }
+  .menu-item {
+    background:white; border-radius:13px; padding:14px;
+    display:flex; align-items:center; gap:11px; margin-bottom:7px;
+    cursor:pointer; box-shadow:0 1px 6px rgba(0,0,0,.05); transition:background .15s;
+  }
+  .menu-item:active { background:#F5F7FA; }
+  .menu-item-icon { font-size:21px; }
+  .menu-item-text { flex:1; font-size:14px; font-weight:500; color:var(--text); }
+  .menu-item-arrow { color:var(--text-sub); font-size:13px; }
+  /* ===== INVITE MODAL ===== */
+  .modal-overlay {
+    position:absolute; inset:0; background:rgba(0,0,0,.45);
+    display:flex; align-items:flex-end; z-index:50;
+    opacity:0; pointer-events:none; transition:opacity .3s;
+  }
+  .modal-overlay.show { opacity:1; pointer-events:auto; }
+  .modal-sheet {
+    width:100%; background:white; border-radius:24px 24px 0 0;
+    padding:24px 20px 32px;
+    transform:translateY(100%); transition:transform .3s;
+  }
+  .modal-overlay.show .modal-sheet { transform:translateY(0); }
+  .modal-title { font-size:18px; font-weight:800; text-align:center; margin-bottom:6px; }
+  .modal-sub { font-size:13px; color:var(--text-sub); text-align:center; margin-bottom:20px; }
+  .invite-code {
+    background:var(--primary-light); border-radius:14px;
+    padding:18px; text-align:center; margin-bottom:16px;
+  }
+  .invite-code .code { font-size:32px; font-weight:900; letter-spacing:6px; color:var(--primary); }
+  .invite-code .hint { font-size:12px; color:var(--text-sub); margin-top:4px; }
+  .share-btns { display:flex; gap:10px; }
+  .share-btn {
+    flex:1; padding:13px; border-radius:13px;
+    text-align:center; font-size:13px; font-weight:600; cursor:pointer;
+    transition:opacity .2s;
+  }
+  .share-btn:active { opacity:.8; }
+  .share-btn.wechat { background:#07C160; color:white; }
+  .share-btn.copy { background:var(--primary-light); color:var(--primary); }
+  /* ===== VOICE MODAL ===== */
+  .voice-modal {
+    position:absolute; inset:0; background:rgba(0,0,0,.5);
+    display:flex; align-items:center; justify-content:center; z-index:60;
+    opacity:0; pointer-events:none; transition:opacity .3s;
+  }
+  .voice-modal.show { opacity:1; pointer-events:auto; }
+  .voice-panel {
+    width:300px; background:white; border-radius:24px; padding:30px 24px;
+    text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.2);
+    transform:scale(0.85); transition:transform .3s;
+  }
+  .voice-modal.show .voice-panel { transform:scale(1); }
+  .voice-wave { font-size:56px; margin-bottom:16px; }
+  .voice-status { font-size:16px; font-weight:700; color:var(--text); margin-bottom:8px; }
+  .voice-hint { font-size:12px; color:var(--text-sub); margin-bottom:20px; line-height:1.6; }
+  .voice-transcript {
+    background:#F5F7FA; border-radius:12px; padding:12px 14px;
+    font-size:14px; color:var(--text); min-height:48px;
+    text-align:left; margin-bottom:16px;
+    line-height:1.6;
+  }
+  .voice-parsed {
+    display:none; background:var(--primary-light); border-radius:12px;
+    padding:12px 14px; font-size:13px; text-align:left; margin-bottom:16px;
+    line-height:1.8;
+  }
+  .voice-parsed.show { display:block; }
+  .voice-actions { display:flex; gap:10px; }
+  .voice-actions button {
+    flex:1; padding:12px; border-radius:12px; border:none; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit;
+  }
+  .v-cancel { background:#F5F7FA; color:var(--text-sub); }
+  .v-confirm { background:var(--primary); color:white; }
+  /* ===== Shared Badge ===== */
+  .shared-dot {
+    width:7px; height:7px; border-radius:50%; background:var(--saving);
+    display:inline-block; margin-right:2px;
+  }
+  /* ===== Toast ===== */
+  .toast {
+    position:absolute; bottom:96px; left:50%;
+    transform:translateX(-50%) translateY(16px);
+    background:rgba(0,0,0,.72); color:white;
+    padding:9px 18px; border-radius:20px; font-size:12px;
+    opacity:0; transition:all .3s; pointer-events:none;
+    white-space:nowrap; z-index:99;
+  }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  .empty-hint { text-align:center; padding:36px 20px; color:var(--text-sub); font-size:13px; }
+  .empty-hint .icon { font-size:44px; margin-bottom:10px; }
+</style>
+</head>
+<body>
+<div class="phone-wrap">
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <span>10:58</span>
+    <span style="display:flex;gap:6px;align-items:center;">
+      <span style="font-size:10px;background:rgba(255,255,255,.25);padding:1px 6px;border-radius:8px;">👨‍👩‍👧‍👦 4人共享</span>
+      🔋 97%
+    </span>
+  </div>
+
+  <!-- ========== PAGE: 首页 ========== -->
+  <div class="page active" id="page-home">
+    <div class="page-header" style="padding-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div class="sub">👨‍👩‍👧‍👦 家庭共享账本</div>
+          <h2 style="font-size:22px;">家账本</h2>
+        </div>
+        <div style="font-size:22px;cursor:pointer;" onclick="showToast('消息通知')">🔔</div>
+      </div>
+    </div>
+    <div class="month-nav">
+      <div class="m-arrow" onclick="changeMonth(-1)">‹</div>
+      <div class="m-current" id="monthDisplay">2026年4月</div>
+      <div class="m-arrow" onclick="changeMonth(1)">›</div>
+    </div>
+    <div class="content">
+      <div class="summary-row">
+        <div class="sum-card income"><div class="lbl">💰 收入</div><div class="val" id="totalIncome">¥0</div></div>
+        <div class="sum-card expense"><div class="lbl">💸 支出</div><div class="val" id="totalExpense">¥0</div></div>
+        <div class="sum-card balance"><div class="lbl">📊 结余</div><div class="val" id="totalBalance">¥0</div></div>
+      </div>
+      <!-- 成员筛选 -->
+      <div class="family-strip" id="memberFilter"></div>
+      <!-- 类型筛选 -->
+      <div class="filter-tabs">
+        <div class="f-tab active" onclick="filterTx('all',this)">全部</div>
+        <div class="f-tab" onclick="filterTx('income',this)">收入</div>
+        <div class="f-tab" onclick="filterTx('expense',this)">支出</div>
+      </div>
+      <div id="txList"></div>
+    </div>
+  </div>
+
+  <!-- ========== PAGE: 添加记账 ========== -->
+  <div class="page" id="page-add">
+    <div class="add-header">
+      <div class="back-btn" onclick="showPage('home')">← 返回</div>
+      <div class="type-toggle">
+        <div class="type-btn active" id="typeExpense" onclick="switchType('expense')">支出</div>
+        <div class="type-btn" id="typeIncome" onclick="switchType('income')">收入</div>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding-bottom:12px;">
+      <div class="amount-display">
+        <span class="symbol">¥</span>
+        <input class="value" id="amountInput" value="0" readonly>
+        <div class="voice-btn" id="voiceBtn" onclick="startVoice()" title="语音记账">🎙️</div>
+      </div>
+      <!-- 语音识别结果 -->
+      <div class="voice-result" id="voiceResult">
+        <div class="vr-text" id="vrText"></div>
+        <div class="vr-parsed" id="vrParsed"></div>
+      </div>
+      <div class="section-title" id="catTitle">支出分类</div>
+      <div class="cat-grid" id="catGrid"></div>
+      <div class="section-title">记账成员</div>
+      <div class="member-picker" id="memberPicker"></div>
+      <div class="section-title">备注</div>
+      <div class="note-input">
+        <span>📝</span>
+        <input type="text" id="noteInput" placeholder="添加备注（选填）">
+      </div>
+      <div class="section-title">日期</div>
+      <div class="note-input">
+        <span>📅</span>
+        <input type="date" id="dateInput" style="border:none;outline:none;flex:1;font-size:13px;font-family:inherit;color:var(--text);background:transparent;">
+      </div>
+    </div>
+    <div class="keypad">
+      <div class="keypad-row">
+        <div class="key" onclick="kp('7')">7</div><div class="key" onclick="kp('8')">8</div>
+        <div class="key" onclick="kp('9')">9</div><div class="key del" onclick="kpDel()">⌫</div>
+      </div>
+      <div class="keypad-row">
+        <div class="key" onclick="kp('4')">4</div><div class="key" onclick="kp('5')">5</div>
+        <div class="key" onclick="kp('6')">6</div><div class="key" onclick="kp('.')">.</div>
+      </div>
+      <div class="keypad-row">
+        <div class="key" onclick="kp('1')">1</div><div class="key" onclick="kp('2')">2</div>
+        <div class="key" onclick="kp('3')">3</div><div class="key confirm" onclick="saveTx()">记账</div>
+      </div>
+      <div class="keypad-row">
+        <div class="key zero" onclick="kp('0')">0</div><div class="key" onclick="kp('00')">00</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== PAGE: 统计 ========== -->
+  <div class="page" id="page-stats">
+    <div class="page-header"><h2>📊 收支统计</h2><div class="sub" id="statsMonthLabel">2026年4月</div></div>
+    <div class="content">
+      <div class="summary-row" style="margin-top:10px;">
+        <div class="sum-card income"><div class="lbl">本月收入</div><div class="val" id="statsIncome">¥0</div></div>
+        <div class="sum-card expense"><div class="lbl">本月支出</div><div class="val" id="statsExpense">¥0</div></div>
+        <div class="sum-card balance"><div class="lbl">储蓄率</div><div class="val" id="statsSave">0%</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">近6个月收支趋势</div>
+        <div class="bar-chart" id="barChart"></div>
+        <div style="display:flex;gap:14px;margin-top:10px;justify-content:center;">
+          <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-sub)"><div style="width:10px;height:10px;border-radius:2px;background:var(--income)"></div>收入</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-sub)"><div style="width:10px;height:10px;border-radius:2px;background:var(--expense)"></div>支出</div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">支出分类占比</div>
+        <div class="donut-wrap" id="donutArea"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">家庭成员支出贡献</div>
+        <div id="contribList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== PAGE: 预算 ========== -->
+  <div class="page" id="page-budget">
+    <div class="page-header"><h2>💡 预算管理</h2></div>
+    <div class="content">
+      <div class="budget-overview">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:14px;font-weight:700;">本月总预算</div>
+          <div style="font-size:12px;color:var(--text-sub)">已用 <span id="budgetPctText">0%</span></div>
+        </div>
+        <div style="margin:6px 0 4px;display:flex;justify-content:space-between;font-size:13px;">
+          <span style="color:var(--expense);font-weight:700;">已支出 <span id="budgetSpent">¥0</span></span>
+          <span style="color:var(--text-sub)">总预算 ¥8,000</span>
+        </div>
+        <div class="budget-bar-bg">
+          <div class="budget-bar-fill" id="budgetBar" style="width:0%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-sub);margin-top:6px;">
+          <span>距月末还有 9 天</span>
+          <span>剩余 <span id="budgetLeft">¥8,000</span></span>
+        </div>
+      </div>
+      <div style="padding:0 14px 8px;font-size:14px;font-weight:700;color:var(--text);">分类预算</div>
+      <div class="budget-list" id="budgetList"></div>
+    </div>
+  </div>
+
+  <!-- ========== PAGE: 我的 ========== -->
+  <div class="page" id="page-profile">
+    <div class="profile-header">
+      <div class="profile-avatar">👩</div>
+      <div class="profile-name">宝妈的家账本</div>
+      <div class="profile-sub">👨‍👩‍👧‍👦 4人共享 · 记账第 1 天</div>
+    </div>
+    <div class="content">
+      <div class="profile-stats">
+        <div class="p-stat"><div class="n" id="pStatTx">0</div><div class="l">总记录</div></div>
+        <div class="p-stat"><div class="n" id="pStatDays">1</div><div class="l">记账天数</div></div>
+        <div class="p-stat"><div class="n" id="pStatMem">4</div><div class="l">家庭成员</div></div>
+      </div>
+      <!-- 家庭成员管理 -->
+      <div class="family-card">
+        <div class="family-card-title">
+          <span>👨‍👩‍👧‍👦 家庭成员</span>
+          <span style="font-size:13px;color:var(--primary);cursor:pointer;" onclick="showInvite()">+ 邀请</span>
+        </div>
+        <div id="familyMemberList"></div>
+      </div>
+      <div class="menu-group">
+        <div class="menu-item" onclick="showToast('账户管理')"><div class="menu-item-icon">💳</div><div class="menu-item-text">账户管理</div><div class="menu-item-arrow">›</div></div>
+        <div class="menu-item" onclick="showToast('周期账单')"><div class="menu-item-icon">🔄</div><div class="menu-item-text">周期账单</div><div class="menu-item-arrow">›</div></div>
+        <div class="menu-item" onclick="showToast('智能提醒')"><div class="menu-item-icon">🔔</div><div class="menu-item-text">智能提醒</div><div class="menu-item-arrow">›</div></div>
+      </div>
+      <div class="menu-group">
+        <div class="menu-item" onclick="showToast('导出Excel')"><div class="menu-item-icon">📤</div><div class="menu-item-text">导出数据</div><div class="menu-item-arrow">›</div></div>
+        <div class="menu-item" onclick="showToast('云端同步')"><div class="menu-item-icon">☁️</div><div class="menu-item-text">云端同步</div><div class="menu-item-arrow">›</div></div>
+        <div class="menu-item" onclick="showToast('主题换肤')"><div class="menu-item-icon">🎨</div><div class="menu-item-text">主题换肤</div><div class="menu-item-arrow">›</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== Bottom Nav ========== -->
+  <div class="bottom-nav">
+    <div class="nav-item active" id="nav-home" onclick="showPage('home')"><div class="icon">🏠</div><span>首页</span></div>
+    <div class="nav-item" id="nav-stats" onclick="showPage('stats')"><div class="icon">📊</div><span>统计</span></div>
+    <div class="nav-item" style="flex:1;display:flex;align-items:center;justify-content:center;">
+      <div class="add-circle" onclick="showPage('add')">＋</div>
+    </div>
+    <div class="nav-item" id="nav-budget" onclick="showPage('budget')"><div class="icon">💡</div><span>预算</span></div>
+    <div class="nav-item" id="nav-profile" onclick="showPage('profile')"><div class="icon">👤</div><span>我的</span></div>
+  </div>
+
+  <!-- ===== 邀请家人 Modal ===== -->
+  <div class="modal-overlay" id="inviteModal" onclick="hideInvite(event)">
+    <div class="modal-sheet">
+      <div class="modal-title">邀请家人加入</div>
+      <div class="modal-sub">分享邀请码，家人安装后输入即可加入共享账本</div>
+      <div class="invite-code">
+        <div class="code">FA-8831</div>
+        <div class="hint">邀请码 24 小时内有效</div>
+      </div>
+      <div class="share-btns">
+        <div class="share-btn wechat" onclick="showToast('已分享到微信')">📱 微信分享</div>
+        <div class="share-btn copy" onclick="showToast('邀请链接已复制')">🔗 复制链接</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 语音记账 Modal ===== -->
+  <div class="voice-modal" id="voiceModal">
+    <div class="voice-panel">
+      <div class="voice-wave" id="voiceWave">🎙️</div>
+      <div class="voice-status" id="voiceStatus">正在聆听...</div>
+      <div class="voice-hint" id="voiceHint">
+        试试说：<br>
+        "买菜花了38块"<br>
+        "老公工资到账5500"<br>
+        "儿子学费交了600"
+      </div>
+      <div class="voice-transcript" id="voiceTranscript">等待语音输入...</div>
+      <div class="voice-parsed" id="voiceParsedBox"></div>
+      <div class="voice-actions">
+        <button class="v-cancel" onclick="cancelVoice()">取消</button>
+        <button class="v-confirm" id="voiceConfirmBtn" onclick="confirmVoice()" disabled style="opacity:.5;">使用此结果</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+// =================== 家庭成员数据 ===================
+const FAMILY = [
+  {id:'mom',  name:'妈妈', icon:'👩', role:'管理员', color:'#FFE0B2'},
+  {id:'dad',  name:'爸爸', icon:'👨', role:'成员',   color:'#E1F5FE'},
+  {id:'girl', name:'女儿', icon:'👧', role:'成员',   color:'#F3E5F5'},
+  {id:'boy',  name:'儿子', icon:'👦', role:'成员',   color:'#E8F5E9'},
+];
+
+// =================== 分类数据 ===================
+const EXPENSE_CATS = [
+  {id:'food', icon:'🍜',name:'餐饮',color:'#FFE0B2'},
+  {id:'shop', icon:'🛒',name:'购物',color:'#E1F5FE'},
+  {id:'trans',icon:'🚌',name:'交通',color:'#E8F5E9'},
+  {id:'edu',  icon:'📚',name:'教育',color:'#F3E5F5'},
+  {id:'health',icon:'💊',name:'医疗',color:'#FFEBEE'},
+  {id:'home', icon:'🏠',name:'住房',color:'#FFF3E0'},
+  {id:'ent',  icon:'🎮',name:'娱乐',color:'#E8EAF6'},
+  {id:'beauty',icon:'💄',name:'美容',color:'#FCE4EC'},
+  {id:'pet',  icon:'🐱',name:'宠物',color:'#F1F8E9'},
+  {id:'other',icon:'📦',name:'其他',color:'#F5F5F5'},
+];
+const INCOME_CATS = [
+  {id:'salary',icon:'💼',name:'工资',color:'#E8F5E9'},
+  {id:'bonus', icon:'🎁',name:'奖金',color:'#FFF9C4'},
+  {id:'invest',icon:'📈',name:'理财',color:'#E3F2FD'},
+  {id:'rent',  icon:'🏘️',name:'房租',color:'#FBE9E7'},
+  {id:'side',  icon:'💡',name:'副业',color:'#F3E5F5'},
+  {id:'gift',  icon:'🧧',name:'红包',color:'#FFEBEE'},
+  {id:'refund',icon:'↩️',name:'退款',color:'#E8F5E9'},
+  {id:'oinc',  icon:'💰',name:'其他',color:'#F5F5F5'},
+];
+
+// =================== 交易数据 ===================
+let transactions = [
+  {id:1,type:'expense',cat:'food', icon:'🍜',name:'餐饮', amount:85,  note:'午餐+晚餐',   date:'2026-04-21',member:'mom'},
+  {id:2,type:'expense',cat:'edu',  icon:'📚',name:'教育', amount:300, note:'女儿补习班',  date:'2026-04-20',member:'mom'},
+  {id:3,type:'income', cat:'salary',icon:'💼',name:'工资', amount:5500,note:'妈妈四月工资',date:'2026-04-18',member:'mom'},
+  {id:4,type:'expense',cat:'shop', icon:'🛒',name:'购物', amount:238, note:'超市采购',    date:'2026-04-17',member:'dad'},
+  {id:5,type:'expense',cat:'trans',icon:'🚌',name:'交通', amount:45,  note:'打车',        date:'2026-04-16',member:'dad'},
+  {id:6,type:'income', cat:'bonus',icon:'🎁',name:'奖金', amount:800, note:'爸爸绩效奖金',date:'2026-04-15',member:'dad'},
+  {id:7,type:'expense',cat:'health',icon:'💊',name:'医疗',amount:120, note:'儿子看诊',    date:'2026-04-14',member:'mom'},
+  {id:8,type:'expense',cat:'ent',  icon:'🎮',name:'娱乐', amount:68,  note:'全家电影',    date:'2026-04-13',member:'dad'},
+  {id:9,type:'income', cat:'salary',icon:'💼',name:'工资',amount:6800,note:'爸爸四月工资',date:'2026-04-10',member:'dad'},
+  {id:10,type:'expense',cat:'edu', icon:'📚',name:'教育', amount:200, note:'儿子绘画课',  date:'2026-04-09',member:'mom'},
+];
+
+let currentType = 'expense';
+let selectedCat = null;
+let selectedMember = 'mom';
+let amountStr = '0';
+let currentMonth = {year:2026, month:4};
+let txFilter = 'all';
+let memberFilter = 'all';
+
+// =================== 语音相关 ===================
+let recognition = null;
+let voiceResult = null;
+
+// 构建语音识别（兼容 webkit）
+function buildRecognition() {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) return null;
+  const rec = new SpeechRec();
+  rec.lang = 'zh-CN';
+  rec.interimResults = true;
+  rec.maxAlternatives = 1;
+  return rec;
+}
+
+// =================== NLP 解析语音内容 ===================
+function parseVoiceTx(text) {
+  // 关键词映射
+  const catKeywords = {
+    expense: [
+      {keys:['吃','买菜','餐','饭','外卖','早餐','午餐','晚餐','奶茶','咖啡','零食'],cat:'food',icon:'🍜',name:'餐饮'},
+      {keys:['购物','超市','网购','淘宝','京东','买了','买东西'],           cat:'shop',icon:'🛒',name:'购物'},
+      {keys:['打车','公交','地铁','加油','停车','滴滴','高铁','机票'],       cat:'trans',icon:'🚌',name:'交通'},
+      {keys:['学费','培训','补习','辅导','课','书'],                        cat:'edu', icon:'📚',name:'教育'},
+      {keys:['看病','医院','药','挂号','检查','治疗'],                       cat:'health',icon:'💊',name:'医疗'},
+      {keys:['房租','水电','物业','煤气','宽带'],                            cat:'home',icon:'🏠',name:'住房'},
+      {keys:['电影','游戏','旅游','娱乐','KTV'],                             cat:'ent', icon:'🎮',name:'娱乐'},
+      {keys:['美容','理发','美发','护肤'],                                   cat:'beauty',icon:'💄',name:'美容'},
+    ],
+    income: [
+      {keys:['工资','薪资','到账','发工资'],cat:'salary',icon:'💼',name:'工资'},
+      {keys:['奖金','绩效','年终'],         cat:'bonus', icon:'🎁',name:'奖金'},
+      {keys:['红包','压岁钱'],              cat:'gift',  icon:'🧧',name:'红包'},
+      {keys:['理财','股票','基金','分红'],  cat:'invest', icon:'📈',name:'理财'},
+      {keys:['退款','退了'],               cat:'refund', icon:'↩️',name:'退款'},
+    ]
+  };
+
+  // 判断收入/支出
+  let type = 'expense';
+  const incomeKw = ['工资','奖金','到账','收到','红包','理财','分红','退款','副业','收入'];
+  if (incomeKw.some(k => text.includes(k))) type = 'income';
+
+  // 提取金额
+  const numMatch = text.match(/(\d+\.?\d*)\s*[块元钱]/);
+  const numOnly  = text.match(/(\d+\.?\d*)/);
+  const amount = numMatch ? parseFloat(numMatch[1]) : (numOnly ? parseFloat(numOnly[1]) : 0);
+
+  // 匹配分类
+  let matched = null;
+  for (const item of catKeywords[type]) {
+    if (item.keys.some(k => text.includes(k))) {
+      matched = item; break;
+    }
+  }
+  if (!matched) {
+    matched = type === 'expense'
+      ? {cat:'other',icon:'📦',name:'其他'}
+      : {cat:'oinc', icon:'💰',name:'其他'};
+  }
+
+  // 提取备注（去掉金额部分）
+  let note = text.replace(/(\d+\.?\d*)\s*[块元钱]?/g,'').replace(/花了|花|交了|交|买了|到账|收到/g,'').trim();
+  if (!note || note.length < 2) note = matched.name;
+
+  return {type, amount, cat:matched.cat, icon:matched.icon, name:matched.name, note};
+}
+
+// =================== VOICE UI ===================
+function startVoice() {
+  const modal = document.getElementById('voiceModal');
+  const wave = document.getElementById('voiceWave');
+  const status = document.getElementById('voiceStatus');
+  const transcript = document.getElementById('voiceTranscript');
+  const parsedBox = document.getElementById('voiceParsedBox');
+  const confirmBtn = document.getElementById('voiceConfirmBtn');
+
+  voiceResult = null;
+  transcript.textContent = '等待语音输入...';
+  parsedBox.classList.remove('show');
+  parsedBox.innerHTML = '';
+  confirmBtn.disabled = true;
+  confirmBtn.style.opacity = '.5';
+  wave.textContent = '🎙️';
+  status.textContent = '正在聆听...';
+  document.getElementById('voiceHint').style.display = 'block';
+  modal.classList.add('show');
+
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    // 浏览器不支持时模拟演示
+    simulateVoice();
+    return;
+  }
+
+  recognition = buildRecognition();
+  recognition.onstart = () => {
+    wave.textContent = '🌊';
+    wave.style.animation = 'pulse 0.8s infinite';
+  };
+  recognition.onresult = (e) => {
+    let text = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      text += e.results[i][0].transcript;
+    }
+    transcript.textContent = `"${text}"`;
+    if (e.results[e.results.length-1].isFinal) {
+      processVoiceText(text);
+    }
+  };
+  recognition.onerror = () => simulateVoice();
+  recognition.onend = () => {
+    wave.style.animation = '';
+    if (!voiceResult) status.textContent = '未识别到语音，使用演示';
+  };
+  recognition.start();
+}
+
+function simulateVoice() {
+  // 演示模拟（浏览器不支持时）
+  const demos = [
+    '买菜花了38块',
+    '爸爸工资到账6800',
+    '儿子学费交了600',
+    '打车花了45元',
+    '奶茶花了28块',
+  ];
+  const text = demos[Math.floor(Math.random() * demos.length)];
+  const wave = document.getElementById('voiceWave');
+  const transcript = document.getElementById('voiceTranscript');
+  const status = document.getElementById('voiceStatus');
+  const hint = document.getElementById('voiceHint');
+
+  wave.textContent = '🌊';
+  status.textContent = '识别中...';
+  hint.style.display = 'none';
+
+  let i = 0;
+  const timer = setInterval(() => {
+    transcript.textContent = `"${text.slice(0, ++i)}"`;
+    if (i >= text.length) {
+      clearInterval(timer);
+      processVoiceText(text);
+    }
+  }, 80);
+}
+
+function processVoiceText(text) {
+  const wave = document.getElementById('voiceWave');
+  const status = document.getElementById('voiceStatus');
+  const parsedBox = document.getElementById('voiceParsedBox');
+  const confirmBtn = document.getElementById('voiceConfirmBtn');
+  const hint = document.getElementById('voiceHint');
+
+  hint.style.display = 'none';
+  voiceResult = parseVoiceTx(text);
+  wave.textContent = '✅';
+  wave.style.animation = '';
+  status.textContent = '识别成功！';
+
+  parsedBox.innerHTML = `
+    <div style="font-weight:700;color:var(--text);margin-bottom:4px;">🤖 智能解析结果：</div>
+    <div>类型：<b style="color:${voiceResult.type==='expense'?'var(--expense)':'var(--income)'}">${voiceResult.type==='expense'?'💸 支出':'💰 收入'}</b></div>
+    <div>金额：<b style="color:var(--primary)">¥${voiceResult.amount}</b></div>
+    <div>分类：${voiceResult.icon} ${voiceResult.name}</div>
+    <div>备注：${voiceResult.note}</div>
+  `;
+  parsedBox.classList.add('show');
+  confirmBtn.disabled = false;
+  confirmBtn.style.opacity = '1';
+}
+
+function confirmVoice() {
+  if (!voiceResult) return;
+  cancelVoice();
+  // 填充到记账页
+  showPage('add');
+  setTimeout(() => {
+    switchType(voiceResult.type);
+    amountStr = voiceResult.amount > 0 ? String(voiceResult.amount) : '0';
+    document.getElementById('amountInput').value = amountStr;
+    selectedCat = voiceResult.cat;
+    document.getElementById('noteInput').value = voiceResult.note;
+    renderCatGrid();
+    showToast('语音识别完成，请确认后记账 ✅');
+  }, 100);
+}
+
+function cancelVoice() {
+  if (recognition) { try { recognition.stop(); } catch(e){} recognition = null; }
+  document.getElementById('voiceModal').classList.remove('show');
+}
+
+// =================== PAGES ===================
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item[id]').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  const navEl = document.getElementById('nav-'+name);
+  if (navEl) navEl.classList.add('active');
+  if (name==='home')    renderHome();
+  if (name==='add')     initAdd();
+  if (name==='stats')   renderStats();
+  if (name==='budget')  renderBudget();
+  if (name==='profile') renderProfile();
+}
+
+// =================== HOME ===================
+function changeMonth(d) {
+  currentMonth.month += d;
+  if (currentMonth.month > 12) { currentMonth.month=1; currentMonth.year++; }
+  if (currentMonth.month < 1)  { currentMonth.month=12; currentMonth.year--; }
+  renderHome();
+}
+
+function renderMemberFilter() {
+  let html = `<div class="member-chip ${memberFilter==='all'?'active':''}" onclick="setMemberFilter('all',this)">
+    <span class="avatar">👨‍👩‍👧‍👦</span> 全家
+  </div>`;
+  FAMILY.forEach(m => {
+    const active = memberFilter===m.id ? 'active' : '';
+    html += `<div class="member-chip ${active}" onclick="setMemberFilter('${m.id}',this)">
+      <span class="avatar">${m.icon}</span> ${m.name}
+    </div>`;
+  });
+  document.getElementById('memberFilter').innerHTML = html;
+}
+
+function setMemberFilter(id, el) {
+  memberFilter = id;
+  renderMemberFilter();
+  renderTxList();
+  updateSummary();
+}
+
+function filterTx(type, el) {
+  txFilter = type;
+  document.querySelectorAll('.f-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderTxList();
+}
+
+function getMonthTx() {
+  return transactions.filter(t => {
+    const d = new Date(t.date);
+    return d.getFullYear()===currentMonth.year && (d.getMonth()+1)===currentMonth.month;
+  });
+}
+
+function getFilteredTx() {
+  return getMonthTx().filter(t =>
+    (memberFilter==='all' || t.member===memberFilter) &&
+    (txFilter==='all' || t.type===txFilter)
+  );
+}
+
+function updateSummary() {
+  const txs = getMonthTx().filter(t => memberFilter==='all' || t.member===memberFilter);
+  const income = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const expense = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  document.getElementById('totalIncome').textContent = '¥'+income.toLocaleString();
+  document.getElementById('totalExpense').textContent = '¥'+expense.toLocaleString();
+  const bal = income - expense;
+  document.getElementById('totalBalance').textContent = (bal>=0?'¥':'-¥')+Math.abs(bal).toLocaleString();
+}
+
+function renderHome() {
+  document.getElementById('monthDisplay').textContent = `${currentMonth.year}年${currentMonth.month}月`;
+  renderMemberFilter();
+  updateSummary();
+  renderTxList();
+}
+
+function renderTxList() {
+  const txs = getFilteredTx();
+  txs.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const groups = {};
+  txs.forEach(t => { if(!groups[t.date]) groups[t.date]=[]; groups[t.date].push(t); });
+
+  let html = '';
+  if (Object.keys(groups).length===0) {
+    html = `<div class="empty-hint"><div class="icon">📋</div><div>暂无记录，点击 + 开始记账</div></div>`;
+  }
+  Object.keys(groups).sort((a,b)=>new Date(b)-new Date(a)).forEach(date => {
+    const d = new Date(date);
+    const dayStr = `${d.getMonth()+1}月${d.getDate()}日`;
+    const wk = ['日','一','二','三','四','五','六'][d.getDay()];
+    const di = groups[date].filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const de = groups[date].filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    let daySumm = '';
+    if(di>0) daySumm += `<span style="color:var(--income)">+${di}</span> `;
+    if(de>0) daySumm += `<span style="color:var(--expense)">-${de}</span>`;
+
+    html += `<div class="tx-group"><div class="tx-date-header"><span class="day">${dayStr} 周${wk}</span><span>${daySumm}</span></div>`;
+    groups[date].forEach(t => {
+      const cats = t.type==='expense' ? EXPENSE_CATS : INCOME_CATS;
+      const cat = cats.find(c=>c.id===t.cat)||{color:'#F5F5F5'};
+      const mem = FAMILY.find(m=>m.id===t.member)||FAMILY[0];
+      html += `<div class="tx-item">
+        <div class="tx-icon" style="background:${cat.color}">${t.icon}</div>
+        <div class="tx-info">
+          <div class="name">${t.name}</div>
+          <div class="sub">
+            <span class="tx-member-badge">${mem.icon} ${mem.name}</span>
+            ${t.note||'无备注'}
+          </div>
+        </div>
+        <div class="tx-amount ${t.type}">${t.type==='income'?'+':'-'}¥${t.amount.toLocaleString()}</div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  document.getElementById('txList').innerHTML = html;
+}
+
+// =================== ADD ===================
+function initAdd() {
+  currentType = 'expense';
+  selectedCat = null;
+  amountStr = '0';
+  document.getElementById('amountInput').value = '0';
+  document.getElementById('noteInput').value = '';
+  const today = new Date();
+  document.getElementById('dateInput').value = today.toISOString().split('T')[0];
+  document.getElementById('typeExpense').classList.add('active');
+  document.getElementById('typeIncome').classList.remove('active');
+  document.getElementById('catTitle').textContent = '支出分类';
+  // default member = mom
+  selectedMember = 'mom';
+  renderCatGrid();
+  renderMemberPicker();
+}
+
+function switchType(type) {
+  currentType = type;
+  selectedCat = null;
+  document.getElementById('typeExpense').classList.toggle('active', type==='expense');
+  document.getElementById('typeIncome').classList.toggle('active', type==='income');
+  document.getElementById('catTitle').textContent = type==='expense'?'支出分类':'收入分类';
+  renderCatGrid();
+}
+
+function renderCatGrid() {
+  const cats = currentType==='expense' ? EXPENSE_CATS : INCOME_CATS;
+  let html = '';
+  cats.forEach(c => {
+    const sel = selectedCat===c.id ? 'selected' : '';
+    html += `<div class="cat-cell ${sel}" onclick="selectCat('${c.id}')">
+      <div class="cat-icon" style="background:${c.color}">${c.icon}</div>
+      <div class="cat-name">${c.name}</div>
+    </div>`;
+  });
+  document.getElementById('catGrid').innerHTML = html;
+}
+
+function renderMemberPicker() {
+  let html = '';
+  FAMILY.forEach(m => {
+    const sel = selectedMember===m.id ? 'selected' : '';
+    html += `<div class="mpick ${sel}" onclick="selectMember('${m.id}')">
+      <div class="mpick-avatar" style="background:${m.color}">${m.icon}</div>
+      <div class="mpick-name">${m.name}</div>
+    </div>`;
+  });
+  document.getElementById('memberPicker').innerHTML = html;
+}
+
+function selectCat(id) { selectedCat=id; renderCatGrid(); }
+function selectMember(id) { selectedMember=id; renderMemberPicker(); }
+
+function kp(val) {
+  if(val==='.' && amountStr.includes('.')) return;
+  if(amountStr.length>=9) return;
+  if(amountStr==='0' && val!=='.') amountStr=val; else amountStr+=val;
+  document.getElementById('amountInput').value = amountStr;
+}
+function kpDel() {
+  amountStr = amountStr.slice(0,-1)||'0';
+  document.getElementById('amountInput').value = amountStr;
+}
+
+function saveTx() {
+  const amount = parseFloat(amountStr);
+  if(!amount||amount<=0){ showToast('请输入金额'); return; }
+  if(!selectedCat){ showToast('请选择分类'); return; }
+  const cats = currentType==='expense' ? EXPENSE_CATS : INCOME_CATS;
+  const cat = cats.find(c=>c.id===selectedCat);
+  transactions.unshift({
+    id: Date.now(), type: currentType, cat: selectedCat,
+    icon: cat.icon, name: cat.name,
+    amount, note: document.getElementById('noteInput').value,
+    date: document.getElementById('dateInput').value,
+    member: selectedMember,
+  });
+  showToast('记账成功 ✅');
+  setTimeout(()=>showPage('home'), 800);
+}
+
+// =================== STATS ===================
+function renderStats() {
+  const txs = getMonthTx();
+  const income = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const expense = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const save = income>0 ? Math.round((income-expense)/income*100) : 0;
+  document.getElementById('statsIncome').textContent = '¥'+income.toLocaleString();
+  document.getElementById('statsExpense').textContent = '¥'+expense.toLocaleString();
+  document.getElementById('statsSave').textContent = save+'%';
+  document.getElementById('statsMonthLabel').textContent = `${currentMonth.year}年${currentMonth.month}月`;
+
+  // Bar
+  const months = [];
+  for(let i=5;i>=0;i--){let y=currentMonth.year,m=currentMonth.month-i;if(m<=0){m+=12;y--;}months.push({y,m});}
+  const maxVal = Math.max(...months.map(mo=>{
+    const ts=transactions.filter(t=>{const d=new Date(t.date);return d.getFullYear()===mo.y&&(d.getMonth()+1)===mo.m;});
+    return Math.max(ts.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0),ts.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0));
+  }),1);
+  let bh='';
+  months.forEach(mo=>{
+    const ts=transactions.filter(t=>{const d=new Date(t.date);return d.getFullYear()===mo.y&&(d.getMonth()+1)===mo.m;});
+    const inc=ts.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const exp=ts.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const ih=Math.round(inc/maxVal*65)+2, eh=Math.round(exp/maxVal*65)+2;
+    bh+=`<div class="bar-group"><div class="bars"><div class="bar in" style="height:${ih}px"></div><div class="bar ex" style="height:${eh}px"></div></div><div class="bar-label">${mo.m}月</div></div>`;
+  });
+  document.getElementById('barChart').innerHTML = bh;
+
+  // Donut
+  const expTxs = txs.filter(t=>t.type==='expense');
+  const catMap = {};
+  expTxs.forEach(t=>{if(!catMap[t.name])catMap[t.name]={amount:0,icon:t.icon};catMap[t.name].amount+=t.amount;});
+  const total = Object.values(catMap).reduce((s,c)=>s+c.amount,0);
+  const colors = ['#4CAF87','#FF6B6B','#5B9BD5','#FFB347','#9C89E2','#F67280','#62B3A5','#E0A96D'];
+  const cats = Object.entries(catMap).map(([name,v],i)=>({name,amount:v.amount,icon:v.icon,pct:total?Math.round(v.amount/total*100):0,color:colors[i%colors.length]})).sort((a,b)=>b.amount-a.amount);
+
+  let legendHtml='', svgPaths='', angle=-90;
+  cats.forEach(c=>{
+    const sweep=c.pct/100*360, r=40, cx=50, cy=50;
+    const sr=angle*Math.PI/180, er=(angle+sweep)*Math.PI/180;
+    const x1=cx+r*Math.cos(sr),y1=cy+r*Math.sin(sr),x2=cx+r*Math.cos(er),y2=cy+r*Math.sin(er);
+    const large=sweep>180?1:0;
+    if(cats.length===1) svgPaths+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${c.color}" stroke="white" stroke-width="3"/>`;
+    else svgPaths+=`<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2} Z" fill="${c.color}" stroke="white" stroke-width="2"/>`;
+    angle+=sweep;
+    legendHtml+=`<div class="legend-item"><div class="legend-dot" style="background:${c.color}"></div><div class="legend-name">${c.icon} ${c.name}</div><div class="legend-pct">${c.pct}%</div></div>`;
+  });
+  if(cats.length===0){svgPaths=`<circle cx="50" cy="50" r="40" fill="#F0F0F0"/>`;legendHtml='<div style="font-size:12px;color:#aaa">暂无数据</div>';}
+  document.getElementById('donutArea').innerHTML = `<svg width="100" height="100" viewBox="0 0 100 100">${svgPaths}</svg><div class="legend-list">${legendHtml}</div>`;
+
+  // Member Contribution
+  const totalExp = expTxs.reduce((s,t)=>s+t.amount,0)||1;
+  let ch = '';
+  FAMILY.forEach(m=>{
+    const amt = expTxs.filter(t=>t.member===m.id).reduce((s,t)=>s+t.amount,0);
+    const pct = Math.round(amt/totalExp*100);
+    ch += `<div class="contrib-item">
+      <div class="contrib-avatar">${m.icon}</div>
+      <div class="contrib-info">
+        <div class="contrib-name">${m.name}</div>
+        <div class="contrib-bar-bg"><div class="contrib-bar-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="contrib-amount">¥${amt.toLocaleString()}</div>
+    </div>`;
+  });
+  document.getElementById('contribList').innerHTML = ch;
+}
+
+// =================== BUDGET ===================
+function renderBudget() {
+  const txs = getMonthTx();
+  const expense = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const total = 8000, pct = Math.min(Math.round(expense/total*100),100), left = total-expense;
+  document.getElementById('budgetPctText').textContent = pct+'%';
+  document.getElementById('budgetSpent').textContent = '¥'+expense.toLocaleString();
+  document.getElementById('budgetLeft').textContent = '¥'+Math.max(left,0).toLocaleString();
+  const bar = document.getElementById('budgetBar');
+  bar.style.width = pct+'%';
+  bar.className = 'budget-bar-fill'+(pct>=100?' over':pct>=80?' warn':'');
+
+  const budgets = [
+    {icon:'🍜',name:'餐饮',cat:'food',  budget:2000,color:'#FFE0B2'},
+    {icon:'📚',name:'教育',cat:'edu',   budget:1500,color:'#F3E5F5'},
+    {icon:'🛒',name:'购物',cat:'shop',  budget:1500,color:'#E1F5FE'},
+    {icon:'🏠',name:'住房',cat:'home',  budget:2000,color:'#FFF3E0'},
+    {icon:'🚌',name:'交通',cat:'trans', budget:300, color:'#E8F5E9'},
+    {icon:'💊',name:'医疗',cat:'health',budget:500, color:'#FFEBEE'},
+  ];
+  let html='';
+  budgets.forEach(b=>{
+    const spent=txs.filter(t=>t.type==='expense'&&t.cat===b.cat).reduce((s,t)=>s+t.amount,0);
+    const bp=Math.min(Math.round(spent/b.budget*100),100);
+    const cls=bp>=100?'over':bp>=80?'warn':'';
+    html+=`<div class="budget-item"><div class="budget-item-top">
+      <div class="budget-item-icon" style="background:${b.color}">${b.icon}</div>
+      <div class="budget-item-name">${b.name}</div>
+      <div class="budget-item-amount">¥${spent}/¥${b.budget}</div>
+    </div><div class="budget-bar-bg"><div class="budget-bar-fill ${cls}" style="width:${bp}%"></div></div></div>`;
+  });
+  document.getElementById('budgetList').innerHTML = html;
+}
+
+// =================== PROFILE ===================
+function renderProfile() {
+  document.getElementById('pStatTx').textContent = transactions.length;
+  document.getElementById('pStatDays').textContent = new Set(transactions.map(t=>t.date)).size;
+  let fml='';
+  FAMILY.forEach(m=>{
+    fml+=`<div class="family-member-row">
+      <div class="fm-avatar">${m.icon}</div>
+      <div class="fm-info">
+        <div class="fm-name">${m.name}</div>
+        <div class="fm-role">${m.role}</div>
+      </div>
+      <div class="fm-badge ${m.role==='管理员'?'admin':'member'}">${m.role}</div>
+    </div>`;
+  });
+  document.getElementById('familyMemberList').innerHTML = fml;
+}
+
+// =================== INVITE ===================
+function showInvite() { document.getElementById('inviteModal').classList.add('show'); }
+function hideInvite(e) {
+  if(e.target===document.getElementById('inviteModal')) document.getElementById('inviteModal').classList.remove('show');
+}
+
+// =================== TOAST ===================
+function showToast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg;
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// Init
+renderHome();
+</script>
+</body>
+</html>
