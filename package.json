@@ -1,0 +1,18 @@
+{
+  "name": "family-budget-app",
+  "version": "1.0.0",
+  "description": "家庭共享记账本 App",
+  "main": "index.js",
+  "scripts": {
+    "build": "echo 'Web build complete'",
+    "sync": "npx cap sync android",
+    "android": "npx cap run android",
+    "open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0"
+  },
+  "devDependencies": {}
+}
